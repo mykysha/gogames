@@ -2,6 +2,7 @@ package main
 
 import (
 	"math/rand/v2"
+	"os"
 	"slices"
 
 	"github.com/mykysha/gogames/snake/domain"
@@ -15,6 +16,10 @@ func main() {
 
 	rows := 20
 	cols := 20
+
+	for range rows + 2 {
+		os.Stdout.WriteString("\n") // TODO: this is so ugly but it makes the screen not to clear the extra terminal
+	}
 
 	gameScreen := window.NewWithBorder(rows, cols, []byte("#")[0])
 

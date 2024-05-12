@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/mykysha/gogames/snake/pkg/writer"
 )
 
 type Window struct {
@@ -74,15 +76,21 @@ func (w *Window) Clean() {
 }
 
 func (w *Window) Display() {
-	writer := bufio.NewWriter(os.Stdout) // TODO: well rework.
+	stdoutWriter := bufio.NewWriter(os.Stdout) // TODO: well rework.
 
 	for {
 		time.Sleep(time.Second / 30)
 
+		curScreenHeight := w.rows
+
 		if w.border != nil {
-			if _, err := writer.WriteString(strings.Repeat(string(*w.border), w.cols+2)); err != nil {
-				panic(err) // TODO: replace with log.
-			}
+			curScreenHeight += 2
+		}
+
+		currentScreen := make([]string, 0, curScreenHeight)
+
+		if w.border != nil {
+			currentScreen = append(currentScreen, strings.Repeat(string(*w.border), w.cols+2))
 		}
 
 		for i := range w.rows {
@@ -93,19 +101,13 @@ func (w *Window) Display() {
 				row = append(row, *w.border)
 			}
 
-			if _, err := writer.WriteString(string(row)); err != nil {
-				panic(err) // TODO: replace with log.
-			}
+			currentScreen = append(currentScreen, string(row))
 		}
 
 		if w.border != nil {
-			if _, err := writer.WriteString(strings.Repeat(string(*w.border), w.cols+2)); err != nil {
-				panic(err) // TODO: replace with log.
-			}
+			currentScreen = append(currentScreen, strings.Repeat(string(*w.border), w.cols+2))
 		}
 
-		if err := writer.Flush(); err != nil {
-			panic(err) // TODO: replace with log.
-		}
+		writer.DisplayScreen(currentScreen, stdoutWriter)
 	}
 }
