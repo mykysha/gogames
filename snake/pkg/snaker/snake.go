@@ -1,6 +1,7 @@
-package snake
+package snaker
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -37,10 +38,16 @@ type Snake struct {
 	rwMux        *sync.RWMutex
 }
 
-func NewSnake(updateFlag chan struct{}, startDir Direction, startBody []domain.Coordinate, rows, cols int) *Snake { // TODO: add starting speed.
-	updateTime, err := speedToTime(SpeedFast)
+func NewSnake(
+	updateFlag chan struct{},
+	startDir Direction,
+	startBody []domain.Coordinate,
+	rows, cols int,
+	startingSpeed Speed,
+) (*Snake, error) {
+	updateTime, err := speedToTime(startingSpeed)
 	if err != nil {
-		panic(err) // TODO: replace with log.
+		return nil, fmt.Errorf("failed to set starting speed: %w", err)
 	}
 
 	return &Snake{
@@ -53,7 +60,7 @@ func NewSnake(updateFlag chan struct{}, startDir Direction, startBody []domain.C
 		rows:         rows,
 		cols:         cols,
 		rwMux:        new(sync.RWMutex),
-	}
+	}, nil
 }
 
 func speedToTime(speed Speed) (time.Duration, error) {
@@ -69,27 +76,45 @@ func speedToTime(speed Speed) (time.Duration, error) {
 	}
 }
 
-func (s *Snake) SetDirection(dir Direction) {
-	if dir == getReverseDir(s.dir) {
-		return
+func (s *Snake) SetDirection(dir Direction) error {
+	reverseDir, err := getReverseDir(s.dir)
+	if err != nil {
+		return fmt.Errorf("failed to get reverse direction: %w", err)
+	}
+
+	if dir == reverseDir {
+		return nil
 	}
 
 	s.nextDir = &dir
+
+	return nil
 }
 
-func getReverseDir(dir Direction) Direction {
+func (s *Snake) SetSpeed(speed Speed) error {
+	newUpdateTime, err := speedToTime(speed)
+	if err != nil {
+		return fmt.Errorf("failed to set speed: %w", err)
+	}
+
+	s.updateTime = newUpdateTime
+
+	return nil
+}
+
+func getReverseDir(dir Direction) (Direction, error) {
 	switch dir {
 	case DirectionUp:
-		return DirectionDown
+		return DirectionDown, nil
 	case DirectionRight:
-		return DirectionLeft
+		return DirectionLeft, nil
 	case DirectionDown:
-		return DirectionUp
+		return DirectionUp, nil
 	case DirectionLeft:
-		return DirectionRight
-	default:
-		panic("unknown direction") // TODO: replace with log.
+		return DirectionRight, nil
 	}
+
+	return 0, errUnknownDirection
 }
 
 func (s *Snake) MakeBigger() {
@@ -116,7 +141,7 @@ func (s *Snake) Live() {
 
 		s.rwMux.Lock()
 
-		s.body = append(s.body, newHead) // TODO: Optimize perhaps.
+		s.body = append(s.body, newHead)
 
 		if !s.becameBigger {
 			s.body = s.body[1:]

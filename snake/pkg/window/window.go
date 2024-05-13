@@ -1,12 +1,8 @@
 package window
 
 import (
-	"bufio"
-	"os"
+	"fmt"
 	"strings"
-	"time"
-
-	"github.com/mykysha/gogames/snake/pkg/writer"
 )
 
 type Window struct {
@@ -56,9 +52,19 @@ func (w *Window) Set(data byte, row, col int) error {
 }
 
 func (w *Window) WriteText(text string, row, col int) error {
-	for i, char := range text {
-		if err := w.Set(byte(char), row, col+i); err != nil { // TODO: redo
-			return err
+	for _, char := range text {
+		col++
+		if col >= w.cols {
+			col = 0
+			row++
+
+			if row >= w.rows {
+				return errTextOutOfScreen
+			}
+		}
+
+		if err := w.Set(byte(char), row, col); err != nil {
+			return fmt.Errorf("failed to write symbol: %w", err)
 		}
 	}
 
@@ -75,39 +81,29 @@ func (w *Window) Clean() {
 	}
 }
 
-func (w *Window) Display() {
-	stdoutWriter := bufio.NewWriter(os.Stdout) // TODO: well rework.
+func (w *Window) GetSnapshot() []string {
+	curScreenHeight := w.rows + 2
 
-	for {
-		time.Sleep(time.Second / 30)
+	currentScreen := make([]string, 0, curScreenHeight)
 
-		curScreenHeight := w.rows
-
-		if w.border != nil {
-			curScreenHeight += 2
-		}
-
-		currentScreen := make([]string, 0, curScreenHeight)
-
-		if w.border != nil {
-			currentScreen = append(currentScreen, strings.Repeat(string(*w.border), w.cols+2))
-		}
-
-		for i := range w.rows {
-			row := w.data[i*w.cols : (i+1)*w.cols]
-
-			if w.border != nil {
-				row = append([]byte{*w.border}, row...)
-				row = append(row, *w.border)
-			}
-
-			currentScreen = append(currentScreen, string(row))
-		}
-
-		if w.border != nil {
-			currentScreen = append(currentScreen, strings.Repeat(string(*w.border), w.cols+2))
-		}
-
-		writer.DisplayScreen(currentScreen, stdoutWriter)
+	if w.border != nil {
+		currentScreen = append(currentScreen, strings.Repeat(string(*w.border), w.cols+2))
 	}
+
+	for i := range w.rows {
+		row := w.data[i*w.cols : (i+1)*w.cols]
+
+		if w.border != nil {
+			row = append([]byte{*w.border}, row...)
+			row = append(row, *w.border)
+		}
+
+		currentScreen = append(currentScreen, string(row))
+	}
+
+	if w.border != nil {
+		currentScreen = append(currentScreen, strings.Repeat(string(*w.border), w.cols+2))
+	}
+
+	return currentScreen
 }
