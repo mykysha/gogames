@@ -30,6 +30,7 @@ type Snake interface {
 	SetDirection(dir snaker.Direction) error
 	GetLocation() []domain.Coordinate
 	MakeBigger()
+	IncreaseSpeed()
 	Live()
 }
 
@@ -39,16 +40,19 @@ type Displayer interface {
 }
 
 type Game struct {
-	logger      log.Logger
-	framerate   int
-	updateFlag  chan struct{}
+	logger     log.Logger
+	framerate  int
+	updateFlag chan struct{}
+
 	rows        int
 	cols        int
 	snakeSprite byte
 	foodSprite  byte
 	screen      Window
-	snake       Snake
 	displayer   Displayer
+
+	score int
+	snake Snake
 }
 
 func NewGame(
@@ -74,22 +78,18 @@ func NewGame(
 
 	updateFlag := make(chan struct{})
 
-	snake, err := snaker.NewSnake(updateFlag, startDir, startBody, rows, cols, snaker.SpeedFast) // TODO: make grading, starting from slow.
-	if err != nil {
-		return nil, fmt.Errorf("failed to create snake: %w", err)
-	}
-
 	return &Game{
 		logger:      slog.Default(),
 		framerate:   thirtyFPS,
 		updateFlag:  updateFlag,
-		screen:      screen,
-		snake:       snake,
 		rows:        rows,
 		cols:        cols,
 		snakeSprite: snakeSprite,
 		foodSprite:  foodSprite,
+		screen:      screen,
 		displayer:   display,
+		score:       0,
+		snake:       snaker.NewSnake(updateFlag, startDir, startBody, rows, cols),
 	}, nil
 }
 
@@ -107,13 +107,17 @@ func (g *Game) Run() {
 
 		for ind, coordinate := range snakeLocation {
 			if slices.Contains(snakeLocation[ind+1:], coordinate) {
-				g.displayGameOver()
+				if err := g.displayGameOver(); err != nil {
+					g.logger.Error("failed to display game over", "error", err)
+				}
 
 				return
 			}
 
 			if coordinate == food {
 				g.snake.MakeBigger()
+				g.snake.IncreaseSpeed()
+				g.score++
 				food = generateNewFood(g.rows, g.cols, snakeLocation)
 			}
 
@@ -181,11 +185,19 @@ func (g *Game) drawFrames() {
 	}
 }
 
-func (g *Game) displayGameOver() {
+func (g *Game) displayGameOver() error {
 	g.screen.Clean()
-	g.screen.WriteText("Game Over", 5, 5)
+	if err := g.screen.WriteText("Game Over", 5, 5); err != nil {
+		return fmt.Errorf("failed to write game over text: %w", err)
+	}
+
+	if err := g.screen.WriteText(fmt.Sprintf("Score: %d", g.score), 7, 5); err != nil {
+		return fmt.Errorf("failed to write score: %w", err)
+	}
 
 	if err := g.displayer.DisplayScreen(g.screen.GetSnapshot()); err != nil {
-		g.logger.Error("failed to display screen", "error", err)
+		return fmt.Errorf("failed to display game over screen: %w", err)
 	}
+
+	return nil
 }

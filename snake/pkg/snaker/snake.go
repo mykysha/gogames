@@ -10,7 +10,6 @@ import (
 
 type (
 	Direction int
-	Speed     int
 )
 
 const (
@@ -18,12 +17,6 @@ const (
 	DirectionRight
 	DirectionDown
 	DirectionLeft
-)
-
-const (
-	SpeedSlow Speed = iota
-	SpeedNormal
-	SpeedFast
 )
 
 type Snake struct {
@@ -43,16 +36,10 @@ func NewSnake(
 	startDir Direction,
 	startBody []domain.Coordinate,
 	rows, cols int,
-	startingSpeed Speed,
-) (*Snake, error) {
-	updateTime, err := speedToTime(startingSpeed)
-	if err != nil {
-		return nil, fmt.Errorf("failed to set starting speed: %w", err)
-	}
-
+) *Snake {
 	return &Snake{
 		updateFlag:   updateFlag,
-		updateTime:   updateTime,
+		updateTime:   time.Second / 5,
 		nextDir:      nil,
 		dir:          startDir,
 		body:         startBody,
@@ -60,19 +47,6 @@ func NewSnake(
 		rows:         rows,
 		cols:         cols,
 		rwMux:        new(sync.RWMutex),
-	}, nil
-}
-
-func speedToTime(speed Speed) (time.Duration, error) {
-	switch speed {
-	case SpeedSlow:
-		return time.Second / 2, nil
-	case SpeedNormal:
-		return time.Second / 4, nil
-	case SpeedFast:
-		return time.Second / 8, nil
-	default:
-		return 0, errUnknownSpeed
 	}
 }
 
@@ -91,15 +65,8 @@ func (s *Snake) SetDirection(dir Direction) error {
 	return nil
 }
 
-func (s *Snake) SetSpeed(speed Speed) error {
-	newUpdateTime, err := speedToTime(speed)
-	if err != nil {
-		return fmt.Errorf("failed to set speed: %w", err)
-	}
-
-	s.updateTime = newUpdateTime
-
-	return nil
+func (s *Snake) IncreaseSpeed() {
+	s.updateTime = s.updateTime - time.Millisecond*10
 }
 
 func getReverseDir(dir Direction) (Direction, error) {
