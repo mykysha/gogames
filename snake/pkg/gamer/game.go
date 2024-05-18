@@ -7,7 +7,6 @@ import (
 	"math/rand/v2"
 	"os"
 	"slices"
-	"time"
 
 	"github.com/mykysha/gogames/snake/domain"
 	"github.com/mykysha/gogames/snake/pkg/displayer"
@@ -16,8 +15,6 @@ import (
 	"github.com/mykysha/gogames/snake/pkg/snaker"
 	"github.com/mykysha/gogames/snake/pkg/window"
 )
-
-const thirtyFPS = 30
 
 type Window interface {
 	Set(data byte, row, col int) error
@@ -28,10 +25,9 @@ type Window interface {
 
 type Snake interface {
 	SetDirection(dir snaker.Direction) error
-	GetLocation() []domain.Coordinate
 	MakeBigger()
 	IncreaseSpeed()
-	Live()
+	Move() []domain.Coordinate
 }
 
 type Displayer interface {
@@ -40,9 +36,7 @@ type Displayer interface {
 }
 
 type Game struct {
-	logger     log.Logger
-	framerate  int
-	updateFlag chan struct{}
+	logger log.Logger
 
 	rows        int
 	cols        int
@@ -50,8 +44,10 @@ type Game struct {
 	foodSprite  byte
 	screen      Window
 	displayer   Displayer
+	keys        chan byte
 
 	score int
+	food  domain.Coordinate
 	snake Snake
 }
 
@@ -76,12 +72,8 @@ func NewGame(
 		return nil, fmt.Errorf("failed to display initial screen: %w", err)
 	}
 
-	updateFlag := make(chan struct{})
-
 	return &Game{
 		logger:      slog.Default(),
-		framerate:   thirtyFPS,
-		updateFlag:  updateFlag,
 		rows:        rows,
 		cols:        cols,
 		snakeSprite: snakeSprite,
@@ -89,45 +81,57 @@ func NewGame(
 		screen:      screen,
 		displayer:   display,
 		score:       0,
-		snake:       snaker.NewSnake(updateFlag, startDir, startBody, rows, cols),
+		keys:        nil,
+		food:        domain.Coordinate{Row: 10, Col: 10},
+		snake:       snaker.NewSnake(startDir, startBody, rows, cols),
 	}, nil
 }
 
 func (g *Game) Run() {
-	food := domain.Coordinate{Row: 10, Col: 10}
-
-	go g.snake.Live()
-	go g.handleMovements()
-	go g.drawFrames()
+	g.keys = g.startInterceptingKeystrokes()
 
 	for {
+		gameOver := g.gameCycle()
+		if gameOver {
+			return
+		}
+	}
+}
+
+func (g *Game) gameCycle() bool {
+	g.handleMovement()
+	newSnakeLocation := g.snake.Move()
+
+	if newSnakeLocation != nil {
 		g.screen.Clean()
 
-		snakeLocation := g.snake.GetLocation()
-
-		for ind, coordinate := range snakeLocation {
-			if slices.Contains(snakeLocation[ind+1:], coordinate) {
+		for ind, coordinate := range newSnakeLocation {
+			if slices.Contains(newSnakeLocation[ind+1:], coordinate) {
 				if err := g.displayGameOver(); err != nil {
 					g.logger.Error("failed to display game over", "error", err)
 				}
 
-				return
+				return true
 			}
 
-			if coordinate == food {
+			if coordinate == g.food {
 				g.snake.MakeBigger()
 				g.snake.IncreaseSpeed()
 				g.score++
-				food = generateNewFood(g.rows, g.cols, snakeLocation)
+				g.food = generateNewFood(g.rows, g.cols, newSnakeLocation)
 			}
 
 			g.screen.Set(g.snakeSprite, coordinate.Row, coordinate.Col)
 		}
 
-		g.screen.Set(g.foodSprite, food.Row, food.Col)
+		g.screen.Set(g.foodSprite, g.food.Row, g.food.Col)
 
-		<-g.updateFlag
+		if err := g.displayer.DisplayScreen(g.screen.GetSnapshot()); err != nil {
+			g.logger.Error("failed to display screen", "error", err)
+		}
 	}
+
+	return false
 }
 
 func generateNewFood(rows, cols int, snake []domain.Coordinate) domain.Coordinate {
@@ -140,8 +144,8 @@ func generateNewFood(rows, cols int, snake []domain.Coordinate) domain.Coordinat
 	}
 }
 
-func (g *Game) handleMovements() {
-	keys := make(chan rune)
+func (g *Game) startInterceptingKeystrokes() chan byte {
+	keys := make(chan byte)
 
 	go func() {
 		for {
@@ -151,36 +155,34 @@ func (g *Game) handleMovements() {
 		}
 	}()
 
-	for {
-		key := <-keys
+	return keys
+}
 
-		switch key {
-		case 'w':
-			if err := g.snake.SetDirection(snaker.DirectionUp); err != nil {
-				g.logger.Error("failed to set direction up", "error", err)
-			}
-		case 'd':
-			if err := g.snake.SetDirection(snaker.DirectionRight); err != nil {
-				g.logger.Error("failed to set direction right", "error", err)
-			}
-		case 's':
-			if err := g.snake.SetDirection(snaker.DirectionDown); err != nil {
-				g.logger.Error("failed to set direction down", "error", err)
-			}
-		case 'a':
-			if err := g.snake.SetDirection(snaker.DirectionLeft); err != nil {
-				g.logger.Error("failed to set direction left", "error", err)
-			}
-		}
+func (g *Game) handleMovement() {
+	select {
+	case key := <-g.keys:
+		g.setSnakeDirection(key)
+	default:
 	}
 }
 
-func (g *Game) drawFrames() {
-	for {
-		time.Sleep(time.Second / time.Duration(g.framerate))
-
-		if err := g.displayer.DisplayScreen(g.screen.GetSnapshot()); err != nil {
-			g.logger.Error("failed to display screen", "error", err)
+func (g *Game) setSnakeDirection(key byte) {
+	switch key {
+	case 'w':
+		if err := g.snake.SetDirection(snaker.DirectionUp); err != nil {
+			g.logger.Error("failed to set direction up", "error", err)
+		}
+	case 'd':
+		if err := g.snake.SetDirection(snaker.DirectionRight); err != nil {
+			g.logger.Error("failed to set direction right", "error", err)
+		}
+	case 's':
+		if err := g.snake.SetDirection(snaker.DirectionDown); err != nil {
+			g.logger.Error("failed to set direction down", "error", err)
+		}
+	case 'a':
+		if err := g.snake.SetDirection(snaker.DirectionLeft); err != nil {
+			g.logger.Error("failed to set direction left", "error", err)
 		}
 	}
 }

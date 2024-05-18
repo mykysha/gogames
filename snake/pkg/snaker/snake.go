@@ -2,7 +2,6 @@ package snaker
 
 import (
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/mykysha/gogames/snake/domain"
@@ -20,7 +19,7 @@ const (
 )
 
 type Snake struct {
-	updateFlag   chan struct{}
+	pastUpdate   time.Time
 	updateTime   time.Duration
 	nextDir      *Direction
 	dir          Direction
@@ -28,17 +27,14 @@ type Snake struct {
 	becameBigger bool
 	rows         int
 	cols         int
-	rwMux        *sync.RWMutex
 }
 
 func NewSnake(
-	updateFlag chan struct{},
 	startDir Direction,
 	startBody []domain.Coordinate,
 	rows, cols int,
 ) *Snake {
 	return &Snake{
-		updateFlag:   updateFlag,
 		updateTime:   time.Second / 5,
 		nextDir:      nil,
 		dir:          startDir,
@@ -46,7 +42,6 @@ func NewSnake(
 		becameBigger: false,
 		rows:         rows,
 		cols:         cols,
-		rwMux:        new(sync.RWMutex),
 	}
 }
 
@@ -66,7 +61,7 @@ func (s *Snake) SetDirection(dir Direction) error {
 }
 
 func (s *Snake) IncreaseSpeed() {
-	s.updateTime = s.updateTime - time.Millisecond*10
+	s.updateTime = s.updateTime - s.updateTime/20
 }
 
 func getReverseDir(dir Direction) (Direction, error) {
@@ -88,38 +83,29 @@ func (s *Snake) MakeBigger() {
 	s.becameBigger = true
 }
 
-func (s *Snake) GetLocation() []domain.Coordinate {
-	s.rwMux.RLock()
-	defer s.rwMux.RUnlock()
+func (s *Snake) Move() []domain.Coordinate {
+	if time.Since(s.pastUpdate) < s.updateTime {
+		return nil
+	}
+
+	if s.nextDir != nil {
+		s.dir = *s.nextDir
+		s.nextDir = nil
+	}
+
+	newHead := move(s.body[len(s.body)-1], s.dir, s.rows, s.cols)
+
+	s.body = append(s.body, newHead)
+
+	if !s.becameBigger {
+		s.body = s.body[1:]
+	} else {
+		s.becameBigger = false
+	}
+
+	s.pastUpdate = time.Now()
 
 	return s.body
-}
-
-func (s *Snake) Live() {
-	for {
-		time.Sleep(s.updateTime)
-
-		if s.nextDir != nil {
-			s.dir = *s.nextDir
-			s.nextDir = nil
-		}
-
-		newHead := move(s.body[len(s.body)-1], s.dir, s.rows, s.cols)
-
-		s.rwMux.Lock()
-
-		s.body = append(s.body, newHead)
-
-		if !s.becameBigger {
-			s.body = s.body[1:]
-		} else {
-			s.becameBigger = false
-		}
-
-		s.rwMux.Unlock()
-
-		s.updateFlag <- struct{}{}
-	}
 }
 
 func move(cur domain.Coordinate, dir Direction, rows, cols int) domain.Coordinate {

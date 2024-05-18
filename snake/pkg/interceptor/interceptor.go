@@ -7,7 +7,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func InterceptKeystrokes(keys chan rune) error {
+func InterceptKeystrokes(keys chan byte) error {
 	oldState, err := enableRawMode()
 	if err != nil {
 		return fmt.Errorf("failed to enable raw mode: %w", err)
@@ -22,7 +22,7 @@ func InterceptKeystrokes(keys chan rune) error {
 			return fmt.Errorf("failed to read from stdin: %w", err)
 		}
 
-		keys <- rune(b[0])
+		keys <- b[0]
 	}
 }
 
