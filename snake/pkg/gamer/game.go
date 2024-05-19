@@ -16,25 +16,6 @@ import (
 	"github.com/mykysha/gogames/snake/pkg/window"
 )
 
-type Window interface {
-	Set(data byte, row, col int) error
-	WriteText(text string, row, col int) error
-	Clean()
-	GetSnapshot() []string
-}
-
-type Snake interface {
-	SetDirection(dir snaker.Direction) error
-	MakeBigger()
-	IncreaseSpeed()
-	Move() []domain.Coordinate
-}
-
-type Displayer interface {
-	DisplayScreen(data []string) error
-	InitialDisplay(data []string) error
-}
-
 type Game struct {
 	logger log.Logger
 
@@ -82,7 +63,7 @@ func NewGame(
 		displayer:   display,
 		score:       0,
 		keys:        nil,
-		food:        domain.Coordinate{Row: 10, Col: 10},
+		food:        generateNewFood(rows, cols, startBody),
 		snake:       snaker.NewSnake(startDir, startBody, rows, cols),
 	}, nil
 }
@@ -93,7 +74,7 @@ func (g *Game) Run() {
 	for {
 		gameOver := g.gameCycle()
 		if gameOver {
-			return
+			break
 		}
 	}
 }
@@ -103,28 +84,14 @@ func (g *Game) gameCycle() bool {
 	newSnakeLocation := g.snake.Move()
 
 	if newSnakeLocation != nil {
-		g.screen.Clean()
-
-		for ind, coordinate := range newSnakeLocation {
-			if slices.Contains(newSnakeLocation[ind+1:], coordinate) {
-				if err := g.displayGameOver(); err != nil {
-					g.logger.Error("failed to display game over", "error", err)
-				}
-
-				return true
+		gameOver := g.handleSnakeMovement(newSnakeLocation)
+		if gameOver {
+			if err := g.displayGameOver(); err != nil {
+				g.logger.Error("failed to display game over", "error", err)
 			}
 
-			if coordinate == g.food {
-				g.snake.MakeBigger()
-				g.snake.IncreaseSpeed()
-				g.score++
-				g.food = generateNewFood(g.rows, g.cols, newSnakeLocation)
-			}
-
-			g.screen.Set(g.snakeSprite, coordinate.Row, coordinate.Col)
+			return true
 		}
-
-		g.screen.Set(g.foodSprite, g.food.Row, g.food.Col)
 
 		if err := g.displayer.DisplayScreen(g.screen.GetSnapshot()); err != nil {
 			g.logger.Error("failed to display screen", "error", err)
@@ -132,6 +99,39 @@ func (g *Game) gameCycle() bool {
 	}
 
 	return false
+}
+
+func (g *Game) handleSnakeMovement(newSnakeLocation []domain.Coordinate) bool {
+	g.screen.Clean()
+
+	for ind, coordinate := range newSnakeLocation {
+		if slices.Contains(newSnakeLocation[ind+1:], coordinate) {
+			return true
+		}
+
+		if coordinate == g.food {
+			g.handleEatenFood(newSnakeLocation)
+		}
+
+		if err := g.screen.Set(g.snakeSprite, coordinate.Row, coordinate.Col); err != nil {
+			g.logger.Error("failed to set snake sprite", "error", err)
+		}
+	}
+
+	if err := g.screen.Set(g.foodSprite, g.food.Row, g.food.Col); err != nil {
+		g.logger.Error("failed to set food sprite", "error", err)
+	}
+
+	return false
+}
+
+func (g *Game) handleEatenFood(newSnakeLocation []domain.Coordinate) {
+	g.snake.MakeBigger()
+	g.snake.IncreaseSpeed()
+
+	g.score++
+
+	g.food = generateNewFood(g.rows, g.cols, newSnakeLocation)
 }
 
 func generateNewFood(rows, cols int, snake []domain.Coordinate) domain.Coordinate {
@@ -189,11 +189,13 @@ func (g *Game) setSnakeDirection(key byte) {
 
 func (g *Game) displayGameOver() error {
 	g.screen.Clean()
-	if err := g.screen.WriteText("Game Over", 5, 5); err != nil {
+
+	middleRow := g.rows / 2
+	if err := g.screen.WriteText("Game Over", middleRow-1, 1); err != nil {
 		return fmt.Errorf("failed to write game over text: %w", err)
 	}
 
-	if err := g.screen.WriteText(fmt.Sprintf("Score: %d", g.score), 7, 5); err != nil {
+	if err := g.screen.WriteText(fmt.Sprintf("Score: %d", g.score), middleRow+1, 1); err != nil {
 		return fmt.Errorf("failed to write score: %w", err)
 	}
 

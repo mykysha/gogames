@@ -16,18 +16,23 @@ func main() {
 
 	dir := snaker.DirectionRight
 
+	snakeRow := 15
+	snakeColTail := 15
+	snakeColMiddle := 16
+	snakeColHead := 17
+
 	startBody := []domain.Coordinate{
 		{
-			Row: 15,
-			Col: 15,
+			Row: snakeRow,
+			Col: snakeColTail,
 		},
 		{
-			Row: 15,
-			Col: 16,
+			Row: snakeRow,
+			Col: snakeColMiddle,
 		},
 		{
-			Row: 15,
-			Col: 17,
+			Row: snakeRow,
+			Col: snakeColHead,
 		},
 	}
 

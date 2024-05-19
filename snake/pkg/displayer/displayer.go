@@ -6,7 +6,7 @@ import (
 )
 
 type OutputWriter interface {
-	WriteString(string) (int, error)
+	WriteString(s string) (int, error)
 	Flush() error
 }
 
@@ -27,7 +27,7 @@ func (d Displayer) InitialDisplay(data []string) error {
 		}
 
 		if _, err := d.writer.WriteString(row + "\x1b[K\n"); err != nil {
-			fmt.Errorf("failed to write row: %w", err)
+			return fmt.Errorf("failed to write row: %w", err)
 		}
 	}
 

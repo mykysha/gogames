@@ -13,23 +13,27 @@ func InterceptKeystrokes(keys chan byte) error {
 		return fmt.Errorf("failed to enable raw mode: %w", err)
 	}
 
-	defer disableRawMode(oldState)
+	defer func() {
+		if err := disableRawMode(oldState); err != nil {
+			panic(err)
+		}
+	}()
 
 	for {
-		b := make([]byte, 1)
+		key := make([]byte, 1)
 
-		if _, err := os.Stdin.Read(b); err != nil {
+		if _, err := os.Stdin.Read(key); err != nil {
 			return fmt.Errorf("failed to read from stdin: %w", err)
 		}
 
-		keys <- b[0]
+		keys <- key[0]
 	}
 }
 
 func enableRawMode() (*unix.Termios, error) {
-	fd := int(os.Stdin.Fd())
+	fileDescriptor := int(os.Stdin.Fd())
 
-	oldState, err := unix.IoctlGetTermios(fd, unix.TIOCGETA)
+	oldState, err := unix.IoctlGetTermios(fileDescriptor, unix.TIOCGETA)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get old terminal state: %w", err)
 	}
@@ -40,7 +44,7 @@ func enableRawMode() (*unix.Termios, error) {
 	newState.Cc[unix.VMIN] = 1
 	newState.Cc[unix.VTIME] = 0
 
-	if err = unix.IoctlSetTermios(fd, unix.TIOCSETA, &newState); err != nil {
+	if err = unix.IoctlSetTermios(fileDescriptor, unix.TIOCSETA, &newState); err != nil {
 		return nil, fmt.Errorf("failed to set new terminal state: %w", err)
 	}
 
@@ -50,5 +54,9 @@ func enableRawMode() (*unix.Termios, error) {
 func disableRawMode(state *unix.Termios) error {
 	fd := int(os.Stdin.Fd())
 
-	return unix.IoctlSetTermios(fd, unix.TIOCSETA, state)
+	if err := unix.IoctlSetTermios(fd, unix.TIOCSETA, state); err != nil {
+		return fmt.Errorf("failed to restore old terminal state: %w", err)
+	}
+
+	return nil
 }

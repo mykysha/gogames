@@ -7,16 +7,7 @@ import (
 	"github.com/mykysha/gogames/snake/domain"
 )
 
-type (
-	Direction int
-)
-
-const (
-	DirectionUp Direction = iota
-	DirectionRight
-	DirectionDown
-	DirectionLeft
-)
+type Direction int
 
 type Snake struct {
 	pastUpdate   time.Time
@@ -29,13 +20,24 @@ type Snake struct {
 	cols         int
 }
 
+const (
+	startingSpeed     = time.Second / 5
+	speedUpByFraction = 20
+
+	DirectionUp Direction = iota
+	DirectionRight
+	DirectionDown
+	DirectionLeft
+)
+
 func NewSnake(
 	startDir Direction,
 	startBody []domain.Coordinate,
 	rows, cols int,
 ) *Snake {
 	return &Snake{
-		updateTime:   time.Second / 5,
+		pastUpdate:   time.Now(),
+		updateTime:   startingSpeed,
 		nextDir:      nil,
 		dir:          startDir,
 		body:         startBody,
@@ -61,7 +63,7 @@ func (s *Snake) SetDirection(dir Direction) error {
 }
 
 func (s *Snake) IncreaseSpeed() {
-	s.updateTime = s.updateTime - s.updateTime/20
+	s.updateTime -= s.updateTime / speedUpByFraction
 }
 
 func getReverseDir(dir Direction) (Direction, error) {
@@ -129,14 +131,14 @@ func move(cur domain.Coordinate, dir Direction, rows, cols int) domain.Coordinat
 	}
 }
 
-func updateCoordinate(current, addendant, max int) int {
+func updateCoordinate(current, addendant, maxCoordinate int) int {
 	newCoordinate := current + addendant
 
 	if newCoordinate < 0 {
-		return max - 1
+		return maxCoordinate - 1
 	}
 
-	if newCoordinate == max {
+	if newCoordinate == maxCoordinate {
 		return 0
 	}
 

@@ -17,7 +17,7 @@ func New(rows, cols int) *Window {
 	empty := []byte(" ")[0]
 	data := make([]byte, 0, rows*cols)
 
-	for i := 0; i < rows*cols; i++ {
+	for range rows * cols {
 		data = append(data, empty)
 	}
 
