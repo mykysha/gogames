@@ -5,6 +5,7 @@ linters:
     - gomnd # Deprecated
 
     - depguard # By design
+    - gosec # It is not needed. Yet.
 
     - unused # Broken
 
