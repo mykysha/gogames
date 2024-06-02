@@ -3,14 +3,15 @@ package window
 import (
 	"fmt"
 	"strings"
+
+	"github.com/mykysha/gogames/snake/domain"
 )
 
 type Window struct {
-	border *byte
-	empty  byte
-	rows   int
-	cols   int
-	data   []byte
+	empty byte
+	rows  int
+	cols  int
+	data  []byte
 }
 
 func New(rows, cols int) *Window {
@@ -22,19 +23,11 @@ func New(rows, cols int) *Window {
 	}
 
 	return &Window{
-		border: nil,
-		empty:  empty,
-		rows:   rows,
-		cols:   cols,
-		data:   data,
+		empty: empty,
+		rows:  rows,
+		cols:  cols,
+		data:  data,
 	}
-}
-
-func NewWithBorder(rows, cols int, border byte) *Window {
-	window := New(rows, cols)
-	window.border = &border
-
-	return window
 }
 
 func (w *Window) Set(data byte, row, col int) error {
@@ -86,24 +79,18 @@ func (w *Window) GetSnapshot() []string {
 
 	currentScreen := make([]string, 0, curScreenHeight)
 
-	if w.border != nil {
-		currentScreen = append(currentScreen, strings.Repeat(string(*w.border), w.cols+2))
-	}
+	currentScreen = append(currentScreen, strings.Repeat(string(domain.Border), w.cols+2))
 
 	for i := range w.rows {
 		row := w.data[i*w.cols : (i+1)*w.cols]
 
-		if w.border != nil {
-			row = append([]byte{*w.border}, row...)
-			row = append(row, *w.border)
-		}
+		row = append([]byte{byte(domain.Border)}, row...)
+		row = append(row, byte(domain.Border))
 
 		currentScreen = append(currentScreen, string(row))
 	}
 
-	if w.border != nil {
-		currentScreen = append(currentScreen, strings.Repeat(string(*w.border), w.cols+2))
-	}
+	currentScreen = append(currentScreen, strings.Repeat(string(domain.Border), w.cols+2))
 
 	return currentScreen
 }

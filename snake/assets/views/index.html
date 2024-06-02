@@ -1,0 +1,28 @@
+{{ block "index" . }}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title></title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="css/style.css" rel="stylesheet">
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/ws.js"></script>
+    <link rel="stylesheet" href="/css/index.css">
+</head>
+
+<body>
+    <div hx-ext="ws" ws-connect="/game">
+        {{ template "screen" . }}
+    </div>
+</body>
+
+</html>
+{{ end }}
+
+{{ block "screen" . }}
+<div id="screen" hx-swap-oob="innerhtml">
+    {{ .Data.Screen }}
+</div>
+{{ end}}

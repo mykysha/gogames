@@ -7,15 +7,12 @@ linters:
     - depguard # By design
     - gosec # It is not needed. Yet.
 
-    - unused # Broken
-
 issues:
   fix: true
 
 linters-settings:
 
   decorder:
-    disable-dec-order-check: false
     disable-init-func-first-check: false
 
   errcheck:
@@ -94,7 +91,7 @@ linters-settings:
     check-exported: true
 
   unused:
-    exported-is-used: false
+    field-writes-are-uses: false
+    # exported-is-used: false # Broken
     exported-fields-are-used: false
-
-
+    local-variables-are-used: false

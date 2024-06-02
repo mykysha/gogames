@@ -3,10 +3,10 @@ package gamer
 import (
 	"bufio"
 	"fmt"
-	"log/slog"
 	"math/rand/v2"
 	"os"
 	"slices"
+	"strings"
 
 	"github.com/mykysha/gogames/snake/domain"
 	"github.com/mykysha/gogames/snake/pkg/displayer"
@@ -17,15 +17,14 @@ import (
 )
 
 type Game struct {
-	logger log.Logger
+	logger     log.Logger
+	screenChan chan string
 
-	rows        int
-	cols        int
-	snakeSprite byte
-	foodSprite  byte
-	screen      Window
-	displayer   Displayer
-	keys        chan byte
+	rows      int
+	cols      int
+	screen    Window
+	displayer Displayer
+	keys      chan byte
 
 	score int
 	food  domain.Coordinate
@@ -33,19 +32,13 @@ type Game struct {
 }
 
 func NewGame(
+	logger log.Logger,
+	screenChan chan string,
 	startDir snaker.Direction,
 	startBody []domain.Coordinate,
 	rows, cols int,
-	snakeSprite, foodSprite byte,
-	borderSprite *byte,
 ) (*Game, error) {
-	var screen *window.Window
-
-	if borderSprite != nil {
-		screen = window.NewWithBorder(rows, cols, *borderSprite)
-	} else {
-		screen = window.New(rows, cols)
-	}
+	screen := window.New(rows, cols)
 
 	display := displayer.NewDisplayer(bufio.NewWriter(os.Stdout))
 
@@ -54,17 +47,16 @@ func NewGame(
 	}
 
 	return &Game{
-		logger:      slog.Default(),
-		rows:        rows,
-		cols:        cols,
-		snakeSprite: snakeSprite,
-		foodSprite:  foodSprite,
-		screen:      screen,
-		displayer:   display,
-		score:       0,
-		keys:        nil,
-		food:        generateNewFood(rows, cols, startBody),
-		snake:       snaker.NewSnake(startDir, startBody, rows, cols),
+		logger:     logger,
+		screenChan: screenChan,
+		rows:       rows,
+		cols:       cols,
+		screen:     screen,
+		displayer:  display,
+		score:      0,
+		keys:       nil,
+		food:       generateNewFood(rows, cols, startBody),
+		snake:      snaker.NewSnake(startDir, startBody, rows, cols),
 	}, nil
 }
 
@@ -93,7 +85,11 @@ func (g *Game) gameCycle() bool {
 			return true
 		}
 
-		if err := g.displayer.DisplayScreen(g.screen.GetSnapshot()); err != nil {
+		snapshot := g.screen.GetSnapshot()
+		singularScreen := strings.Join(snapshot, "\n")
+		g.screenChan <- singularScreen
+
+		if err := g.displayer.DisplayScreen(snapshot); err != nil {
 			g.logger.Error("failed to display screen", "error", err)
 		}
 	}
@@ -113,12 +109,12 @@ func (g *Game) handleSnakeMovement(newSnakeLocation []domain.Coordinate) bool {
 			g.handleEatenFood(newSnakeLocation)
 		}
 
-		if err := g.screen.Set(g.snakeSprite, coordinate.Row, coordinate.Col); err != nil {
+		if err := g.screen.Set(byte(domain.Snake), coordinate.Row, coordinate.Col); err != nil {
 			g.logger.Error("failed to set snake sprite", "error", err)
 		}
 	}
 
-	if err := g.screen.Set(g.foodSprite, g.food.Row, g.food.Col); err != nil {
+	if err := g.screen.Set(byte(domain.Food), g.food.Row, g.food.Col); err != nil {
 		g.logger.Error("failed to set food sprite", "error", err)
 	}
 

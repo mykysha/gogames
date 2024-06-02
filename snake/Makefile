@@ -1,7 +1,19 @@
 PROJECT_BIN ?= $(shell pwd)/bin
 
+.PHONY: hotrun
+hotrun: install-air
+	$(AIR_BIN)
+
 .PHONY: precommit
-precommit: gofumpt lint test govuln
+precommit: modtidy modupdate gofumpt lint test govuln
+
+.PHONY: modtidy
+modtidy:
+	go mod tidy
+
+.PHONY: modupdate
+modupdate:
+	go get -u ./...
 
 .PHONY: gofumpt
 gofumpt: install-gofumpt
@@ -18,6 +30,11 @@ test:
 .PHONY: govuln
 govuln: install-govuln
 	$(GOVULN_BIN) ./...
+
+AIR_BIN = $(PROJECT_BIN)/air
+.PHONY: install-air
+install-air:
+	$(call go-install,$(AIR_BIN),github.com/cosmtrek/air)
 
 GOFUMPT_BIN = $(PROJECT_BIN)/gofumpt
 .PHONY: install-gofumpt
