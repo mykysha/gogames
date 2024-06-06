@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"nhooyr.io/websocket"
+	"nhooyr.io/websocket/wsjson"
 
 	"github.com/mykysha/gogames/snake/pkg/log"
 )
@@ -14,15 +15,17 @@ type API struct {
 	template   *Template
 	page       *IndexPage
 	screenChan chan string
+	keyChan    chan string
 }
 
-func NewAPI(logger log.Logger, screenChan chan string) *API {
+func NewAPI(logger log.Logger, screenChan, keyChan chan string) *API {
 	api := &API{
 		logger:     logger,
 		mux:        http.NewServeMux(),
 		template:   newTemplate(),
 		page:       newIndexPage(),
 		screenChan: screenChan,
+		keyChan:    keyChan,
 	}
 
 	api.registerEndpoints()
@@ -65,6 +68,28 @@ func (a *API) wsHandler(w http.ResponseWriter, req *http.Request) {
 
 	defer wsConn.Close(websocket.StatusNormalClosure, "idk unexpected or something")
 
+	go a.readWSMessages(wsConn, req)
+
+	a.sendWSMessages(wsConn, req)
+}
+
+func (a *API) readWSMessages(wsConn *websocket.Conn, req *http.Request) {
+	for {
+		data := new(movement)
+
+		if err := wsjson.Read(req.Context(), wsConn, data); err != nil {
+			a.logger.Error("failed to read from websocket conn", "error", err)
+
+			return
+		}
+
+		a.logger.Info("Received data from client", "movement", data.Direction)
+
+		a.keyChan <- data.Direction
+	}
+}
+
+func (a *API) sendWSMessages(wsConn *websocket.Conn, req *http.Request) {
 	for screen := range a.screenChan {
 		if err := a.page.UpdateScreen(screen); err != nil {
 			a.logger.Error("failed to update screen", "error", err)

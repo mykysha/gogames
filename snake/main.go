@@ -15,13 +15,14 @@ func main() {
 	logger := slog.Default()
 
 	screenChan := make(chan string)
+	keyChan := make(chan string)
 
-	go setupServer(logger, screenChan)
-	setupGame(logger, screenChan)
+	go setupServer(logger, screenChan, keyChan)
+	setupGame(logger, screenChan, keyChan)
 }
 
-func setupServer(logger log.Logger, screenChan chan string) {
-	handlers := api.NewAPI(logger, screenChan)
+func setupServer(logger log.Logger, screenChan, keyChan chan string) {
+	handlers := api.NewAPI(logger, screenChan, keyChan)
 
 	logger.Info("Server started at :8080")
 
@@ -30,7 +31,7 @@ func setupServer(logger log.Logger, screenChan chan string) {
 	}
 }
 
-func setupGame(logger log.Logger, screenChan chan string) {
+func setupGame(logger log.Logger, screenChan, keyChan chan string) {
 	rows := 20
 	cols := 20
 
@@ -56,10 +57,7 @@ func setupGame(logger log.Logger, screenChan chan string) {
 		},
 	}
 
-	game, err := gamer.NewGame(logger, screenChan, dir, startBody, rows, cols)
-	if err != nil {
-		panic(err)
-	}
+	game := gamer.NewGame(logger, screenChan, keyChan, dir, startBody, rows, cols)
 
 	game.Run()
 }

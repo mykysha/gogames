@@ -18,8 +18,3 @@ type Snake interface {
 	IncreaseSpeed()
 	Move() []domain.Coordinate
 }
-
-type Displayer interface {
-	DisplayScreen(data []string) error
-	InitialDisplay(data []string) error
-}

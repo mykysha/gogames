@@ -14,6 +14,18 @@
 
 <body>
     <div hx-ext="ws" ws-connect="/game">
+        <form hx-trigger="keyup[key=='w'] from:body" ws-send>
+            <input type="hidden" name="direction" value="up">
+        </form>
+        <form hx-trigger="keyup[key=='s'] from:body" ws-send>
+            <input type="hidden" name="direction" value="down">
+        </form>
+        <form hx-trigger="keyup[key=='a'] from:body" ws-send>
+            <input type="hidden" name="direction" value="left">
+        </form>
+        <form hx-trigger="keyup[key=='d'] from:body" ws-send>
+            <input type="hidden" name="direction" value="right">
+        </form>
         {{ template "screen" . }}
     </div>
 </body>
@@ -25,4 +37,4 @@
 <div id="screen" hx-swap-oob="innerhtml">
     {{ .Data.Screen }}
 </div>
-{{ end}}
+{{ end }}
