@@ -2,7 +2,7 @@ PROJECT_BIN ?= $(shell pwd)/bin
 
 .PHONY: hotrun
 hotrun: install-air
-	$(AIR_BIN)
+	$(AIR_BIN) --build.cmd "go build -o bin/snake main.go" --build.bin "./bin/snake"
 
 .PHONY: precommit
 precommit: modtidy modupdate gofumpt lint test govuln
@@ -34,7 +34,7 @@ govuln: install-govuln
 AIR_BIN = $(PROJECT_BIN)/air
 .PHONY: install-air
 install-air:
-	$(call go-install,$(AIR_BIN),github.com/cosmtrek/air)
+	$(call go-install,$(AIR_BIN),github.com/air-verse/air)
 
 GOFUMPT_BIN = $(PROJECT_BIN)/gofumpt
 .PHONY: install-gofumpt

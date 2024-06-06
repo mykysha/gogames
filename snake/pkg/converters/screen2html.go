@@ -18,12 +18,12 @@ func ConvertScreenToHTML(screen string) (template.HTML, error) {
 		htmlScreen += "<div style=\"display: flex\">"
 
 		for _, char := range line {
-			color, err := symbolToColor(char)
+			class, err := symbolToClass(char)
 			if err != nil {
 				return "", fmt.Errorf("failed to convert screen to html: %w", err)
 			}
 
-			htmlScreen += "<div style=\"width: 1rem; height: 1rem; background-color:" + color + "\">" + "</div>"
+			htmlScreen += "<div class=\"" + class + "\"></div>"
 		}
 
 		htmlScreen += "</div>"
@@ -34,16 +34,16 @@ func ConvertScreenToHTML(screen string) (template.HTML, error) {
 	return template.HTML(htmlScreen), nil
 }
 
-func symbolToColor(symbol rune) (string, error) {
+func symbolToClass(symbol rune) (string, error) {
 	switch symbol {
 	case rune(' '):
-		return "white", nil
+		return "space", nil
 	case domain.Border.Rune():
-		return "black", nil
+		return "wall", nil
 	case domain.Snake.Rune():
-		return "green", nil
+		return "snake", nil
 	case domain.Food.Rune():
-		return "red", nil
+		return "food", nil
 	default:
 		return "", fmt.Errorf("%w: %c", errUnknownSymbol, symbol)
 	}
