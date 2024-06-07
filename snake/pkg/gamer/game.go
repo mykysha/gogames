@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"slices"
-	"strings"
 
 	"github.com/mykysha/gogames/snake/domain"
 	"github.com/mykysha/gogames/snake/pkg/log"
@@ -14,7 +13,7 @@ import (
 
 type Game struct {
 	logger     log.Logger
-	screenChan chan string
+	screenChan chan [][]domain.Cell
 
 	rows   int
 	cols   int
@@ -28,14 +27,15 @@ type Game struct {
 
 func NewGame(
 	logger log.Logger,
-	screenChan, keyChan chan string,
+	screenChan chan [][]domain.Cell,
+	keyChan chan string,
 	startDir snaker.Direction,
 	startBody []domain.Coordinate,
 	rows, cols int,
 ) *Game {
 	screen := window.New(rows, cols)
 
-	screenChan <- strings.Join(screen.GetSnapshot(), "\n")
+	screenChan <- screen.GetSnapshot()
 
 	return &Game{
 		logger:     logger,
@@ -73,9 +73,7 @@ func (g *Game) gameCycle() bool {
 			return true
 		}
 
-		snapshot := g.screen.GetSnapshot()
-		singularScreen := strings.Join(snapshot, "\n")
-		g.screenChan <- singularScreen
+		g.screenChan <- g.screen.GetSnapshot()
 	}
 
 	return false
@@ -93,12 +91,12 @@ func (g *Game) handleSnakeMovement(newSnakeLocation []domain.Coordinate) bool {
 			g.handleEatenFood(newSnakeLocation)
 		}
 
-		if err := g.screen.Set(byte(domain.Snake), coordinate.Row, coordinate.Col); err != nil {
+		if err := g.screen.Set(domain.Cell{BgColor: domain.Green}, coordinate.Row, coordinate.Col); err != nil {
 			g.logger.Error("failed to set snake sprite", "error", err)
 		}
 	}
 
-	if err := g.screen.Set(byte(domain.Food), g.food.Row, g.food.Col); err != nil {
+	if err := g.screen.Set(domain.Cell{BgColor: domain.Red}, g.food.Row, g.food.Col); err != nil {
 		g.logger.Error("failed to set food sprite", "error", err)
 	}
 
@@ -164,6 +162,8 @@ func (g *Game) displayGameOver() error {
 	if err := g.screen.WriteText(fmt.Sprintf("Score: %d", g.score), middleRow+1, 1); err != nil {
 		return fmt.Errorf("failed to write score: %w", err)
 	}
-	// TODO: Display the score in htmx somehow.
+
+	g.screenChan <- g.screen.GetSnapshot()
+
 	return nil
 }

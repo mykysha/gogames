@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"io"
 
+	"github.com/mykysha/gogames/snake/domain"
 	"github.com/mykysha/gogames/snake/pkg/converters"
 )
 
@@ -48,13 +49,6 @@ func newIndexPage() *IndexPage {
 	}
 }
 
-func (p *IndexPage) UpdateScreen(screen string) error {
-	htmlScreen, err := converters.ConvertScreenToHTML(screen)
-	if err != nil {
-		return fmt.Errorf("failed to convert screen to html: %w", err)
-	}
-
-	p.Data.Screen = htmlScreen
-
-	return nil
+func (p *IndexPage) UpdateScreen(screen [][]domain.Cell) {
+	p.Data.Screen = converters.ConvertScreenToHTML(screen)
 }

@@ -1,23 +1,4 @@
-.snake {
+.sprite {
     width: 1rem;
     height: 1rem;
-    background-color: green;
-}
-
-.food {
-    width: 1rem;
-    height: 1rem;
-    background-color: red;
-}
-
-.wall {
-    width: 1rem;
-    height: 1rem;
-    background-color: black;
-}
-
-.space {
-    width: 1rem;
-    height: 1rem;
-    background-color: white;
 }

@@ -6,10 +6,10 @@ import (
 )
 
 type Window interface {
-	Set(data byte, row, col int) error
+	Set(data domain.Cell, row, col int) error
 	WriteText(text string, row, col int) error
 	Clean()
-	GetSnapshot() []string
+	GetSnapshot() [][]domain.Cell
 }
 
 type Snake interface {

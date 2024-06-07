@@ -2,21 +2,23 @@ package window
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/mykysha/gogames/snake/domain"
 )
 
 type Window struct {
-	empty byte
+	empty domain.Cell
 	rows  int
 	cols  int
-	data  []byte
+	data  []domain.Cell
 }
 
 func New(rows, cols int) *Window {
-	empty := []byte(" ")[0]
-	data := make([]byte, 0, rows*cols)
+	empty := domain.Cell{
+		BgColor: domain.White,
+	}
+
+	data := make([]domain.Cell, 0, rows*cols)
 
 	for range rows * cols {
 		data = append(data, empty)
@@ -30,7 +32,7 @@ func New(rows, cols int) *Window {
 	}
 }
 
-func (w *Window) Set(data byte, row, col int) error {
+func (w *Window) Set(data domain.Cell, row, col int) error {
 	if row >= w.rows || row < 0 {
 		return errInvalidRow
 	}
@@ -56,7 +58,13 @@ func (w *Window) WriteText(text string, row, col int) error {
 			}
 		}
 
-		if err := w.Set(byte(char), row, col); err != nil {
+		byteSymbol := byte(char)
+
+		if err := w.Set(domain.Cell{
+			BgColor:   domain.White,
+			TextColor: domain.Black,
+			Symbol:    &byteSymbol,
+		}, row, col); err != nil {
 			return fmt.Errorf("failed to write symbol: %w", err)
 		}
 	}
@@ -74,23 +82,58 @@ func (w *Window) Clean() {
 	}
 }
 
-func (w *Window) GetSnapshot() []string {
+func (w *Window) GetSnapshot() [][]domain.Cell {
 	curScreenHeight := w.rows + 2
 
-	currentScreen := make([]string, 0, curScreenHeight)
+	currentScreen := make([][]domain.Cell, 0, curScreenHeight)
 
-	currentScreen = append(currentScreen, strings.Repeat(string(domain.Border), w.cols+2))
+	currentScreen = append(
+		currentScreen,
+		repeatCell(
+			domain.Cell{
+				BgColor: domain.Black,
+			},
+			w.cols+2,
+		),
+	)
 
 	for i := range w.rows {
 		row := w.data[i*w.cols : (i+1)*w.cols]
 
-		row = append([]byte{byte(domain.Border)}, row...)
-		row = append(row, byte(domain.Border))
+		row = append(
+			[]domain.Cell{{
+				BgColor: domain.Black,
+			}},
+			row...)
+		row = append(
+			row,
+			domain.Cell{
+				BgColor: domain.Black,
+			},
+		)
 
-		currentScreen = append(currentScreen, string(row))
+		currentScreen = append(currentScreen, row)
 	}
 
-	currentScreen = append(currentScreen, strings.Repeat(string(domain.Border), w.cols+2))
+	currentScreen = append(
+		currentScreen,
+		repeatCell(
+			domain.Cell{
+				BgColor: domain.Black,
+			},
+			w.cols+2,
+		),
+	)
 
 	return currentScreen
+}
+
+func repeatCell(cell domain.Cell, times int) []domain.Cell {
+	result := make([]domain.Cell, 0, times)
+
+	for range times {
+		result = append(result, cell)
+	}
+
+	return result
 }

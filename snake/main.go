@@ -14,14 +14,14 @@ import (
 func main() {
 	logger := slog.Default()
 
-	screenChan := make(chan string)
+	screenChan := make(chan [][]domain.Cell)
 	keyChan := make(chan string)
 
-	go setupServer(logger, screenChan, keyChan)
-	setupGame(logger, screenChan, keyChan)
+	go setupGame(logger, screenChan, keyChan)
+	setupServer(logger, screenChan, keyChan)
 }
 
-func setupServer(logger log.Logger, screenChan, keyChan chan string) {
+func setupServer(logger log.Logger, screenChan chan [][]domain.Cell, keyChan chan string) {
 	handlers := api.NewAPI(logger, screenChan, keyChan)
 
 	logger.Info("Server started at :8080")
@@ -31,7 +31,7 @@ func setupServer(logger log.Logger, screenChan, keyChan chan string) {
 	}
 }
 
-func setupGame(logger log.Logger, screenChan, keyChan chan string) {
+func setupGame(logger log.Logger, screenChan chan [][]domain.Cell, keyChan chan string) {
 	rows := 20
 	cols := 20
 

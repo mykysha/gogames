@@ -6,6 +6,7 @@ import (
 	"nhooyr.io/websocket"
 	"nhooyr.io/websocket/wsjson"
 
+	"github.com/mykysha/gogames/snake/domain"
 	"github.com/mykysha/gogames/snake/pkg/log"
 )
 
@@ -14,11 +15,11 @@ type API struct {
 	mux        *http.ServeMux
 	template   *Template
 	page       *IndexPage
-	screenChan chan string
+	screenChan chan [][]domain.Cell
 	keyChan    chan string
 }
 
-func NewAPI(logger log.Logger, screenChan, keyChan chan string) *API {
+func NewAPI(logger log.Logger, screenChan chan [][]domain.Cell, keyChan chan string) *API {
 	api := &API{
 		logger:     logger,
 		mux:        http.NewServeMux(),
@@ -91,11 +92,7 @@ func (a *API) readWSMessages(wsConn *websocket.Conn, req *http.Request) {
 
 func (a *API) sendWSMessages(wsConn *websocket.Conn, req *http.Request) {
 	for screen := range a.screenChan {
-		if err := a.page.UpdateScreen(screen); err != nil {
-			a.logger.Error("failed to update screen", "error", err)
-
-			continue
-		}
+		a.page.UpdateScreen(screen)
 
 		writer, err := wsConn.Writer(req.Context(), websocket.MessageText)
 		if err != nil {
